@@ -23,6 +23,7 @@
 				</tr>
 			<?php endforeach; ?>
 		</table>
+		<div style="display: none;" class="alert alert-info"></div>
 		<span id="button" class="btn pull-right">Соединить</span>
 		<span id="indicator" class="badge">Проверка соединения...</span>
 	</div>
@@ -66,6 +67,26 @@
 
 			$.getJSON('ajax.php', { 'action': 'call', from: user_phone, to: client_phone });
 		});
+
+		setInterval(function() {
+			$.getJSON(
+				'ajax.php',
+				{ 'action': 'get_events' },
+				function(data) {
+					var events = data;
+
+					for (var i in events) {
+						if (events.hasOwnProperty(i)) {
+							var event = events[i];
+
+							if (event.type === "2") {
+								$('.alert').text('Звонок с '+event.from+' на '+event.to).show();
+							}
+						}
+					}
+				}
+			);
+		}, 2000);
 	}())
 	</script>
 </body>

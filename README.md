@@ -155,7 +155,7 @@ setInterval(function() {
 function call(ProstieZvonki $pz, array $input) {
 	$pz->call($input['from'], $input['to']);
 }
-php
+```
 
 Теперь добавим на страницу обработчики нажатия на ссылки:
 
@@ -167,11 +167,63 @@ $('body').on('click', '.make-call', function() {
 	$.getJSON('ajax.php', { 'action': 'call', from: user_phone, to: client_phone });
 });
 ```
+
 Кликнув на номер клиента, посмотрим на вывод тестового сервера:
 
 ```
 Call event from CRM: src = 223322, dst = +7 (343) 0112233
 ```
+
+Шаг 3. Всплывающая карточка входящего звонка
+--------------------------------------------
+
+Добавим очередную функцию в ajax.php:
+
+```php
+function get_events(ProstieZvonki $pz) {
+	return json_encode($pz->getEvents());
+}
+```
+
+На страницу поместим скрытый контейнер, который мы будем использовать в качестве всплывающей карточки:
+
+```html
+<div style="display: none;" class="alert alert-info"></div>
+```
+
+Осталось добавить функцию, которая будет раз в две секунды запрашивать список полученных событий:
+
+```js
+setInterval(function() {
+	$.getJSON(
+		'ajax.php',
+		{ 'action': 'get_events' },
+		function(data) {
+			var events = data;
+
+			for (var i in events) {
+				if (events.hasOwnProperty(i)) {
+					var event = events[i];
+
+					if (event.type === "2") {
+						$('.alert').text('Звонок с '+event.from+' на '+event.to).show();
+					}
+				}
+			}
+		}
+	);
+}, 2000);
+```
+
+Чтобы проверить работу всплывающей карточки, создадим входящий звонок с помощью диагностической утилиты:
+
+```
+Generate transfer 222 223344
+```
+
+На странице приложения должна незамедлительно появиться карточка:
+
+![Карточка входящего звонка](https://github.com/vedisoft/php-sdk-tutorial/raw/master/img/incoming-popup.png)
 
 [архив]: https://github.com/vedisoft/php-sdk-tutorial/archive/master.zip
 [php-sdk]: https://github.com/vedisoft/php-sdk/archive/master.zip
