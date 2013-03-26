@@ -23,4 +23,116 @@ git checkout 1
 
 ![Исходное приложение](https://github.com/vedisoft/php-sdk-tutorial/raw/master/img/tinycrm-origin.png)
 
-[архив]: https://github.com/vedisoft/php-sdk/archive/master.zip
+Шаг 1. Настройка подключения к серверу
+--------------------------------------
+
+Скачаем и распакуем архив [php-sdk]. Скопируем Папки ProstieZvonki и TestSuite в наш проект.
+
+Запустим тестовый сервер в режиме с отключенным шифрованием:
+
+```bash
+TestSuite/TestServer.exe -r
+```
+
+и подключимся к нему диагностической утилитой
+
+```bash
+TestSuite/Diagnostic.exe
+
+[events off]> Connect localhost:10150 asd
+Успешно начато установление соединения с АТС
+```
+
+Тестовое окружение настроено.
+
+Добавим на страницу веб-приложения индикатор состояния соединения с сервером и кнопку, по нажатию на которую мы будем устанавливать соединение.
+
+```html
+<span id="button" class="btn pull-right">Соединить</span>
+<span id="indicator" class="badge">Проверка соединения...</span>
+```
+
+Теперь наше приложение выглядит так:
+
+![Индикатор состояния соединения](https://github.com/vedisoft/php-sdk-tutorial/raw/master/img/connection-indicator.png)
+
+Приложение будет получать управлять соединением посредством ajax-запросов, поэтому нам нужно подготовить небольшой обработчик:
+
+```php
+require_once '../ProstieZvonki/ProstieZvonki.php';
+
+$pz = ProstieZvonki::getInstance();
+
+echo call_user_func($_GET['action'], $pz, $_GET);
+```
+
+Сохраним этот файл под именем public/ajax.php. Теперь, чтобы добавить новый тип ajax-запроса, нам нужно всего лишь объявить функцию с двумя аргументами: объектом класса ProstieZvonki (он будет выполнять всю работу по взаимодействию с сервером) и массив с GET-параметрами.
+
+Добавим функции для подключения, отключения и получения информации о состоянии соединения:
+
+```php
+function is_connected(ProstieZvonki $pz) {
+	return $pz->isConnected();
+}
+
+function connect(ProstieZvonki $pz) {
+	$pz->connect(array(
+		'client_id'     => '101',
+		'client_type'   => 'SugarCRM',
+		'host'          => 'localhost',
+		'port'          => '10150',
+		'proxy_enabled' => 'false',
+	));
+}
+
+function disconnect(ProstieZvonki $pz) {
+	$pz->disconnect();
+}
+```
+
+Перейдём к настройки клиентской части приложения.
+
+Добавим обработчик события кнопки. По нажатию кнопки будет выполнять запрос на подключение либо отключение соединения с сервером:
+
+```js
+$('#button').on('click', function() {
+	if ($(this).text() === 'Соединить') {
+		$.getJSON('ajax.php', { 'action': 'connect' });
+	} else {
+		$.getJSON('ajax.php', { 'action': 'disconnect' });
+	}
+});
+```
+
+Также добавим запрос информации о состоянии соединения с интервалом в одну секунду:
+
+```js
+setInterval(function() {
+	$.getJSON(
+		'ajax.php',
+		{ 'action': 'is_connected' },
+		function(data) {
+			if (data) {
+				$('#indicator')
+					.removeClass('badge-important')
+					.addClass('badge-success')
+					.text('Соединение установлено');
+				$('#button').text('Разъединить');
+			} else {
+				$('#indicator')
+					.removeClass('badge-success')
+					.addClass('badge-important')
+					.text('Нет соединения');
+				$('#button').text('Соединить');
+			}
+		}
+	);
+}, 1000);
+```
+
+Попробуем подключиться к серверу:
+
+![Соединение установлено](https://github.com/vedisoft/php-sdk-tutorial/raw/master/img/connection-established.png)
+
+[архив]: https://github.com/vedisoft/php-sdk-tutorial/archive/master.zip
+[php-sdk]: https://github.com/vedisoft/php-sdk/archive/master.zip

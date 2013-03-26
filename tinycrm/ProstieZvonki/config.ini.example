@@ -1,0 +1,11 @@
+client_id = 101
+client_type = SugarCRM
+command_ttl = 10
+host = localhost
+log_file_enabled = true
+log_file_name = SugarCRM.log
+port = 10150
+proxy_enabled = false
+proxy_key = ProstieZvonki
+proxy_port = 443
+unique_key = SugarCRM

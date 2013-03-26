@@ -19,6 +19,43 @@
 				</tr>
 			<?php endforeach; ?>
 		</table>
+		<span id="button" class="btn pull-right">Соединить</span>
+		<span id="indicator" class="badge">Проверка соединения...</span>
 	</div>
+
+	<script src="js/jquery.min.js"></script>
+	<script>
+	(function(){
+		$('#button').on('click', function() {
+			if ($(this).text() === 'Соединить') {
+				$.getJSON('ajax.php', { 'action': 'connect' });
+			} else {
+				$.getJSON('ajax.php', { 'action': 'disconnect' });
+			}
+		});
+
+		setInterval(function() {
+			$.getJSON(
+				'ajax.php',
+				{ 'action': 'is_connected' },
+				function(data) {
+					if (data) {
+						$('#indicator')
+							.removeClass('badge-important')
+							.addClass('badge-success')
+							.text('Соединение установлено');
+						$('#button').text('Разъединить');
+					} else {
+						$('#indicator')
+							.removeClass('badge-success')
+							.addClass('badge-important')
+							.text('Нет соединения');
+						$('#button').text('Соединить');
+					}
+				}
+			);
+		}, 1000);
+	}())
+	</script>
 </body>
 </html>
