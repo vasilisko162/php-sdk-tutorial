@@ -15,7 +15,11 @@
 				<?php $contact = explode(',', $contact); ?>
 				<tr>
 					<td><?= $contact[0] ?></td>
-					<td width="1%" nowrap><?= $contact[1] ?></td>
+					<td width="1%" nowrap>
+					    <span title="Позвонить" class="btn-link make-call">
+					        <?= $contact[1] ?>
+					    </span>
+					</td>
 				</tr>
 			<?php endforeach; ?>
 		</table>
@@ -55,6 +59,13 @@
 				}
 			);
 		}, 1000);
+
+		$('body').on('click', '.make-call', function() {
+			var user_phone   = '223322';
+			var client_phone = $(this).text().trim();
+
+			$.getJSON('ajax.php', { 'action': 'call', from: user_phone, to: client_phone });
+		});
 	}())
 	</script>
 </body>

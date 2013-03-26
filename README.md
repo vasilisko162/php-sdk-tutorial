@@ -134,5 +134,44 @@ setInterval(function() {
 
 ![Соединение установлено](https://github.com/vedisoft/php-sdk-tutorial/raw/master/img/connection-established.png)
 
+Шаг 2. Исходящие звонки кликом по номеру
+----------------------------------------
+
+Для начала, сделаем номера телефонов клиентов ссылками:
+
+```html
+<td width="1%" nowrap>
+    <span title="Позвонить" class="btn-link make-call">
+        <?= $contact[1] ?>
+    </span>
+</td>
+```
+
+![Делаем телефоны ссылками](https://github.com/vedisoft/php-sdk-tutorial/raw/master/img/phone-links.png)
+
+Добавим функцию в файл ajax.php:
+
+```php
+function call(ProstieZvonki $pz, array $input) {
+	$pz->call($input['from'], $input['to']);
+}
+php
+
+Теперь добавим на страницу обработчики нажатия на ссылки:
+
+```js
+$('body').on('click', '.make-call', function() {
+	var user_phone   = '223322';
+	var client_phone = $(this).text().trim();
+
+	$.getJSON('ajax.php', { 'action': 'call', from: user_phone, to: client_phone });
+});
+```
+Кликнув на номер клиента, посмотрим на вывод тестового сервера:
+
+```
+Call event from CRM: src = 223322, dst = +7 (343) 0112233
+```
+
 [архив]: https://github.com/vedisoft/php-sdk-tutorial/archive/master.zip
 [php-sdk]: https://github.com/vedisoft/php-sdk/archive/master.zip
