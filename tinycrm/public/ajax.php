@@ -13,7 +13,7 @@ function is_connected(ProstieZvonki $pz) {
 function connect(ProstieZvonki $pz) {
 	$pz->connect(array(
 		'client_id'     => '101',
-		'client_type'   => 'SugarCRM',
+		'client_type'   => 'tinyCRM',
 		'host'          => 'localhost',
 		'port'          => '10150',
 		'proxy_enabled' => 'false',
