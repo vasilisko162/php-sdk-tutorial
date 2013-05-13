@@ -53,7 +53,7 @@ TestSuite/TestServer.exe -r
 ```bash
 TestSuite/Diagnostic.exe
 
-[events off]> Connect localhost:10150 asd
+[events off]> Connect ws://localhost:10150 asd
 Успешно начато установление соединения с АТС
 ```
 
