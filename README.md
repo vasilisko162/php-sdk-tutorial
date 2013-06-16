@@ -38,7 +38,7 @@ git checkout 1
 
 > У веб-сервера должны быть права на запись в папку storage и её подпапки, а также в папку lib/ListenerProcess и файл config.ini. 
 
-Для начала нужно скачать [тестовый сервер и диагностическую утилиту](https://github.com/vedisoft/pz-developer-tools).
+Теперь нужно скачать [тестовый сервер и диагностическую утилиту](https://github.com/vedisoft/pz-developer-tools).
 
 Запустим тестовый сервер:
 
