@@ -363,16 +363,25 @@ Transfer Event: callID = 18467, to = 101
 Чтобы заполнить таблицу информацией о совершённых звонках, нам нужно обрабатывать события истории звонков:
 
 ```js
-pz.onEvent(function (event) {
-    switch (true) {
-        ...
+setInterval(function() {
+    $.getJSON(
+        'ajax.php',
+        { 'action': 'get_events' },
+        function (events) {
+            events.forEach(function (event) {
+                switch (event.type) {
+                    ...
 
-        case event.isHistory():
-            if (event.to === userPhone || event.from === userPhone) {
-                appendCallInfo(event);
-            }
-            break;
-    }
+                    case '4':
+                        if (event.to.trim() === userPhone || event.from.trim() === userPhone) {
+                            appendCallInfo(event);
+                        }
+                        break;
+                }
+            });
+        }
+    );
+}, 2000);
 });
 ```
 Займёмся реализацией функции `appendCallInfo`, работа которой заключается в том, чтобы отформатировать полученные данные о звонке и записать их в таблицу.
