@@ -108,9 +108,9 @@ function disconnect(ProstieZvonki $pz, array $input) {
 ```js
 $('#button').on('click', function() {
 	if ($(this).text() === 'Соединить') {
-		$.getJSON('ajax.php', { 'action': 'connect' });
+		$.get('ajax.php', { 'action': 'connect' });
 	} else {
-		$.getJSON('ajax.php', { 'action': 'disconnect' });
+		$.get('ajax.php', { 'action': 'disconnect' });
 	}
 });
 ```
@@ -177,7 +177,7 @@ $('body').on('click', '.make-call', function() {
 	                          // будет храниться в настройках пользователя
 	var client_phone = $(this).text().trim();
 
-	$.getJSON('ajax.php', { 'action': 'call', from: user_phone, to: client_phone });
+	$.get('ajax.php', { 'action': 'call', from: user_phone, to: client_phone });
 });
 ```
 
@@ -200,10 +200,63 @@ function get_events(ProstieZvonki $pz, array $input) {
 }
 ```
 
-На страницу поместим скрытый контейнер, который мы будем использовать в качестве всплывающей карточки:
+Для отображения всплывающих карточек воспользуемся плагином [jQuery Noty](http://needim.github.io/noty/).
 
-```html
-<div style="display: none;" class="alert alert-info"></div>
+Скачаем архив с плагином и распакуем его в папку `js/noty`. Теперь нужно подключить все необходимые файлы:
+
+```js
+<script src="js/noty/jquery.noty.js"></script>
+<script src="js/noty/layouts/bottomRight.js"></script>
+<script src="js/noty/themes/default.js"></script>
+```
+
+Подготовим функцию для поиска контактов по номеру телефона:
+
+```js
+function sanitizePhone(phone)
+{
+    return phone.replace(/\D/g, '').slice(-10);
+}
+
+function findByPhone(contacts, phone) {
+    return contacts.filter(function (contact) {
+        return sanitizePhone(contact.phone) === sanitizePhone(phone);
+    }).shift();
+}
+```
+
+> Как видите, мы воспользовались вспомогательной функцией для очистки номера телефона от посторонних символов и кода страны. Таким образом, поиск по номерам `+7 (343) 0112233` и `83430112233` будет выдавать одинаковый результат, что там и нужно.
+
+Теперь у нас есть вся необходимая информация, и мы можем заняться непосредственно отображением карточек. Подготовим две вариации шаблона карточки: для случая когда номер найден в базе, и когда он не найден:
+
+```js
+function getNotyText(phone, name) {
+    return '<span class="pz_noty_title">Входящий звонок</span>' +
+        (name ? '<span class="pz_noty_contact">' + name + '</span>' : '') +
+        '<span class="pz_noty_phone btn-link make-call">' + phone + '</span>' +
+        '<span class="pz_noty_copyright">' +
+            '<img src="img/pz.ico">' +
+            '<a target="_blank" href="http://prostiezvonki.ru">Простые звонки</a>' +
+        '</span>';
+}
+```
+
+Напишем функцию, при вызове которой в правом нижнем углу экрана будет появляться карточка. Чтобы не загромождать экран, при очередном звонке будем скрывать старую карточку.
+
+```js
+function showCard(phone) {
+    var contact = findByPhone(storage, phone);
+    var text = contact
+            ? getNotyText(contact.phone, contact.name)
+            : getNotyText(phone);
+
+    $.noty.closeAll();
+    noty({
+        layout: 'bottomRight',
+        closeWith: ['button'],
+        text: text
+    });
+}
 ```
 
 Осталось добавить функцию, которая будет раз в секунду запрашивать список полученных событий. Если среди событий находится событие входящего вызова на менеджера (то есть событие с типом "2"), будет отображена карточка с информацией по этому вызову.
@@ -212,24 +265,22 @@ function get_events(ProstieZvonki $pz, array $input) {
 
 ```js
 setInterval(function() {
-	$.getJSON(
-		'ajax.php',
-		{ 'action': 'get_events' },
-		function(data) {
-			var events = data;
-
-			for (var i in events) {
-				if (events.hasOwnProperty(i)) {
-					var event = events[i];
-
-					if (event.type === "2") {
-						$('.alert').text('Звонок с '+event.from+' на '+event.to).show();
-					}
-				}
-			}
-		}
-	);
-}, 1000);
+    $.getJSON(
+        'ajax.php',
+        { 'action': 'get_events' },
+        function (events) {
+            events.forEach(function (event) {
+                switch (event.type) {
+                    case '2':
+                        if (event.to === userPhone) {
+                            showCard(event.from);
+                        }
+                        break;
+                }
+            });
+        }
+    );
+}, 2000);
 ```
 
 Чтобы проверить работу всплывающей карточки, создадим входящий звонок с номера 73430112233 на номер 101 с помощью диагностической утилиты Diagnostic.exe:
@@ -242,10 +293,139 @@ setInterval(function() {
 
 ![Карточка входящего звонка](https://github.com/vedisoft/php-sdk-tutorial/raw/master/img/incoming-popup.png)
 
+Шаг 4. Умная переадресация
+--------------------------
+
+Чтобы воспользоваться функцией умной переадресации, нужно определить, какие звонки сотрудник хочет получать.
+
+Будем считать, что все контакты, отображаемые на странице, закреплены за нашим сотрудником. Таким образом, условием для переадресации звонка будет наличие номера телефона звонящего в нашей базе контактов.
+
+Функция для поиска в базе у нас уже есть, так что остаётся только добавить обработку событий трансфера:
+
+```js
+setInterval(function() {
+    $.getJSON(
+        'ajax.php',
+        { 'action': 'get_events' },
+        function (events) {
+            events.forEach(function (event) {
+                switch (event.type) {
+                    case '1':
+                        if (findByPhone(storage, event.from)) {
+                            $.get('ajax.php', { 'action': 'transfer', call_id: event.callID, to: userPhone });
+                        }
+                        break;
+                    
+                    ...
+                }
+            });
+        }
+    );
+}, 2000);
+```
+
+и добавить метод в файл ajax.php:
+
+```php
+function transfer(ProstieZvonki $pz, array $input) {
+	$pz->transfer($input['call_id'], $input['to']);
+}
+```
+
+Чтобы проверить функцию трансфера, отправим запрос с помощью диагностической утилиты:
+
+```
+[events off]> Generate incoming 73430112233
+```
+
+В консоли сервера мы должны увидеть, что приложение отправило запрос на перевод звонка на нашего пользователя:
+
+```
+Transfer Event: callID = 18467, to = 101
+```
+
+Шаг 5. История звонков
+----------------------
+
+Добавим на страницу ещё одну таблицу:
+
+```html
+<h2>История звонков</h2>
+<table id="history" class="table table-bordered">
+    <th width="10%">Направление</th>
+    <th width="10%">Телефон</th>
+    <th width="40%">Клиент</th>
+    <th width="20%">Начало</th>
+    <th width="20%">Продолжительность</th>
+</table>
+```
+
+Чтобы заполнить таблицу информацией о совершённых звонках, нам нужно обрабатывать события истории звонков:
+
+```js
+pz.onEvent(function (event) {
+    switch (true) {
+        ...
+
+        case event.isHistory():
+            if (event.to === userPhone || event.from === userPhone) {
+                appendCallInfo(event);
+            }
+            break;
+    }
+});
+```
+Займёмся реализацией функции `appendCallInfo`, работа которой заключается в том, чтобы отформатировать полученные данные о звонке и записать их в таблицу.
+
+Для форматирования дат мы воспользуемся библиотекой [moment.js](http://momentjs.com/).
+
+Распакуем библиотеку и файлы локализации в папку `js/momentjs` и подключим их:
+
+```html
+<script src="js/momentjs/moment.min.js"></script>
+<script src="js/momentjs/lang/ru.js"></script>
+```
+
+Подключим локализацию:
+
+```js
+moment.lang('ru');
+```
+
+Сама функция будет выглядеть так:
+
+```js
+function appendCallInfo(event) {
+    var direction = event.direction === '1' ? 'Исходящий' : 'Входящий',
+        phone     = event.direction === '1' ? event.to : event.from,
+        contact   = findByPhone(storage, phone),
+        name      = contact ? contact.name : '',
+        fromNow   = moment.unix(event.start).fromNow(),
+        duration  = moment.duration(event.duration, "seconds").humanize();
+
+    $('<tr></tr>')
+        .append('<td>' + direction + '</td>')
+        .append('<td>' + phone + '</td>')
+        .append('<td>' + name + '</td>')
+        .append('<td>' + fromNow + '</td>')
+        .append('<td>' + duration + '</td>')
+        .appendTo('#history');
+}
+```
+
+Для проверки создадим два события истории с помощью диагностической утилиты:
+
+```
+[events off]> Generate history 101 73430112233 1378913389 1378913592 123 out
+[events off]> Generate history 73430112211 101 1378914389 1378914592 250 in
+```
+
+![История звонков](https://github.com/vedisoft/js-sdk-tutorial/raw/master/img/history.png)
+
 Ура!
 ----
 
-Теперь наше приложение умеет показывать карточки со входящими звонками, а пользователь может позвонить клиенту в один клик. 
+Теперь наше приложение умеет показывать карточки со входящими звонками и переводить звонки прикреплённых клиентов, а пользователь может позвонить клиенту в один клик и посмотреть историю совершённых звонков.
 
 Настройка заняла совсем немного времени, ведь так? : )
 

@@ -28,6 +28,10 @@ function call(ProstieZvonki $pz, array $input) {
 	$pz->call($input['from'], $input['to']);
 }
 
+function transfer(ProstieZvonki $pz, array $input) {
+	$pz->transfer($input['call_id'], $input['to']);
+}
+
 function get_events(ProstieZvonki $pz) {
-	return json_encode($pz->getEvents());
+	return json_encode(array_values($pz->getEvents()));
 }

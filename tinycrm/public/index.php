@@ -1,3 +1,4 @@
+<?php require __DIR__ . '/../storage/storage.php'; ?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -5,89 +6,46 @@
 	<title>TinyCRM</title>
 	<link rel="stylesheet" href="css/bootstrap.min.css">
 	<link rel="stylesheet" href="css/bootstrap-responsive.min.css">
+	<link rel="stylesheet" href="css/tinycrm.css">
 </head>
 <body>
 	<div class="container">
 		<h1>TinyCRM</h1>
 		<h2>База клиентов</h2>
 		<table id="contacts" class="table table-bordered">
-			<?php foreach (file('../storage/contacts.csv') as $contact): ?>
-				<?php $contact = explode(',', $contact); ?>
+			<?php foreach (Storage::get() as $contact): ?>
 				<tr>
-					<td><?= $contact[0] ?></td>
+					<td><?= $contact['name'] ?></td>
 					<td width="1%" nowrap>
 					    <span title="Позвонить" class="btn-link make-call">
-					        <?= $contact[1] ?>
+					        <?= $contact['phone'] ?>
 					    </span>
 					</td>
 				</tr>
 			<?php endforeach; ?>
 		</table>
-		<div style="display: none;" class="alert alert-info"></div>
 		<span id="button" class="btn pull-right">Соединить</span>
 		<span id="indicator" class="badge">Проверка соединения...</span>
+		<h2>История звонков</h2>
+		<table id="history" class="table table-bordered">
+			<th width="10%">Направление</th>
+			<th width="10%">Телефон</th>
+			<th width="30%">Клиент</th>
+			<th width="30%">Начало</th>
+			<th width="20%">Продолжительность</th>
+		</table>
 	</div>
 
 	<script src="js/jquery.min.js"></script>
+	<script src="js/noty/jquery.noty.js"></script>
+	<script src="js/noty/layouts/bottomRight.js"></script>
+	<script src="js/noty/themes/default.js"></script>
+	<script src="js/momentjs/moment.min.js"></script>
+	<script src="js/momentjs/lang/ru.js"></script>
+	<script src="js/tinycrm.js"></script>
+
 	<script>
-	(function(){
-		$('#button').on('click', function() {
-			if ($(this).text() === 'Соединить') {
-				$.getJSON('ajax.php', { 'action': 'connect' });
-			} else {
-				$.getJSON('ajax.php', { 'action': 'disconnect' });
-			}
-		});
-
-		setInterval(function() {
-			$.getJSON(
-				'ajax.php',
-				{ 'action': 'is_connected' },
-				function(data) {
-					if (data) {
-						$('#indicator')
-							.removeClass('badge-important')
-							.addClass('badge-success')
-							.text('Соединение установлено');
-						$('#button').text('Разъединить');
-					} else {
-						$('#indicator')
-							.removeClass('badge-success')
-							.addClass('badge-important')
-							.text('Нет соединения');
-						$('#button').text('Соединить');
-					}
-				}
-			);
-		}, 1000);
-
-		$('body').on('click', '.make-call', function() {
-			var user_phone   = '223322';
-			var client_phone = $(this).text().trim();
-
-			$.getJSON('ajax.php', { 'action': 'call', from: user_phone, to: client_phone });
-		});
-
-		setInterval(function() {
-			$.getJSON(
-				'ajax.php',
-				{ 'action': 'get_events' },
-				function(data) {
-					var events = data;
-
-					for (var i in events) {
-						if (events.hasOwnProperty(i)) {
-							var event = events[i];
-
-							if (event.type === "2") {
-								$('.alert').text('Звонок с '+event.from+' на '+event.to).show();
-							}
-						}
-					}
-				}
-			);
-		}, 2000);
-	}())
+		window.storage = <?php echo Storage::getJSON(); ?>;
 	</script>
 </body>
 </html>
